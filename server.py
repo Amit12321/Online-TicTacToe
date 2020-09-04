@@ -11,7 +11,7 @@ BOARD_SIZE = 3
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 try:
-    s.bind( (server, port) )
+    s.bind((server, port))
 except socket.error as e:
     print(e)
 
@@ -22,10 +22,11 @@ connected = set()
 games = {}
 players_count = 0
 
+
 def client(con, p, game_id):
     global players_count
-    con.send(pickle.dumps(p)) #send the client his player
-    
+    con.send(pickle.dumps(p))  # send the client his player
+
     while True:
         try:
             data = con.recv(4096).decode()
@@ -52,7 +53,7 @@ def client(con, p, game_id):
                 break
         except:
             break
-        
+
     print("[SERVER] Lost connection")
     try:
         del games[game_id]
@@ -62,10 +63,11 @@ def client(con, p, game_id):
     players_count -= 1
     con.close()
 
+
 while True:
     con, addr = s.accept()
     print("[SERVER] Connected to: ", addr)
-    
+
     players_count += 1
     p = Player("O", 0)
     game_id = (players_count - 1) // 2
@@ -76,5 +78,5 @@ while True:
         games[game_id].ready = True
         games[game_id].current_turn = 0
         p = Player("X", 1)
-    
+
     start_new_thread(client, (con, p, game_id))
