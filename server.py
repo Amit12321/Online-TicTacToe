@@ -1,12 +1,22 @@
 import socket
-from _thread import start_new_thread
-import pickle
-from player import Player
-from game import Game
+import struct
+from pickle import dumps, loads
 
-server = "192.168.1.36"
-port = 8820
+from _thread import start_new_thread
+from game import Game
+from player import Player
+
+server = "192.168.1.33"
+port = 6654
 BOARD_SIZE = 3
+
+
+def prepare_to_send(data):  # padding packet with its length
+    packet = dumps(data)
+    length = struct.pack('!I', len(packet))
+    packet = length + packet
+    return packet
+
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -18,19 +28,19 @@ except socket.error as e:
 s.listen()
 print("[Server] Waiting for connections")
 
-connected = set()
 games = {}
 players_count = 0
 
 
 def client(con, p, game_id):
     global players_count
-    con.send(pickle.dumps(p))  # send the client his player
+
+    # Sending the client his player
+    con.sendall(prepare_to_send(p))
 
     while True:
         try:
-            data = con.recv(4096).decode()
-
+            data = con.recv(1024).decode()
             if game_id in games:
                 game = games[game_id]
 
@@ -39,22 +49,24 @@ def client(con, p, game_id):
                 else:
                     if data == "reset":
                         game.reset()
-                    elif data != "get" and game.current_turn == p.id:
+                    elif data != "get" and game.current_turn == p.get_id():
                         pos = data.split(",")
-                        game.make_move(p, pos[0], pos[1])
-                        game.current_turn = 1 - p.id
-                        if game.board.check_for_winner(p, pos[0], pos[1]):
+                        game.make_move(p, int(pos[0]), int(pos[1]))
+                        game.current_turn = 1 - p.get_id()
+                        if game.board.check_for_winner(p, int(pos[0]), int(pos[1])):
+                            game.add_win(p.get_id())
                             game.done = True
-                        elif game.is_draw():
+                        if game.is_draw():
                             game.done = True
-
-                con.sendall(pickle.dumps(game))
+                    con.sendall(prepare_to_send(game))
             else:
                 break
-        except:
+        except Exception as e:
+            print(e)
             break
 
     print("[SERVER] Lost connection")
+    con.sendall(prepare_to_send("Q"))
     try:
         del games[game_id]
         print("[SERVER] Closing game ", game_id)
@@ -73,7 +85,7 @@ while True:
     game_id = (players_count - 1) // 2
     if players_count % 2 == 1:
         games[game_id] = Game(game_id, BOARD_SIZE)
-        print("[SERVER] Creating new game...")
+        print("[SERVER] Creating new game with id ", game_id)
     else:
         games[game_id].ready = True
         games[game_id].current_turn = 0

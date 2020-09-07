@@ -44,6 +44,9 @@ class Board:
         self.bo = [["" for i in range(self.size)] for j in range(self.size)]
         self.is_full = False
         self.empty_places = self.size ** 2
+        self.winner = None
+        self.winner_start = None
+        self.winner_end = None
 
     def is_available(self, i, j,):
         return self.bo[i][j] == ""
@@ -102,6 +105,8 @@ class Game:
         self.board = Board(board_size)
         self.current_turn = 0
         self.done = False
+        self.p0_wins = 0
+        self.p1_wins = 0
 
     def make_move(self, player, i, j):
         try:
@@ -126,6 +131,18 @@ class Game:
 
     def get_current_turn(self):
         return self.current_turn
+    
+    def add_win(self, p_id):
+        if p_id == 0:
+            self.p0_wins += 1
+        else:
+            self.p1_wins += 1
+    
+    def get_wins(self, p_id):
+        if p_id == 0:
+            return self.p0_wins
+        else:
+            return self.p1_wins
 
     def reset(self):
         self.board.init_board()
